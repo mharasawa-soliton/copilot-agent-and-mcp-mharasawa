@@ -27,6 +27,21 @@ export const removeFavorite = createAsyncThunk('favorites/removeFavorite', async
   return bookId;
 });
 
+export const updateFavoriteComment = createAsyncThunk(
+  'favorites/updateFavoriteComment',
+  async ({ token, bookId, comment }) => {
+    await fetch(`http://localhost:4000/api/favorites/${bookId}/comment`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ comment }),
+    });
+    return { bookId, comment };
+  }
+);
+
 const favoritesSlice = createSlice({
   name: 'favorites',
   initialState: { items: [], status: 'idle' },
@@ -44,6 +59,12 @@ const favoritesSlice = createSlice({
       })
       .addCase(removeFavorite.fulfilled, (state, action) => {
         // After removing, fetch the updated favorites list to ensure UI is in sync
+      })
+      .addCase(updateFavoriteComment.fulfilled, (state, action) => {
+        const item = state.items.find(book => book.id === action.payload.bookId);
+        if (item) {
+          item.comment = action.payload.comment;
+        }
       });
   },
 });

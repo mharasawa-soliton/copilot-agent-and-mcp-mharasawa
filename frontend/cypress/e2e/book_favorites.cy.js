@@ -57,4 +57,25 @@ describe('Book Favorites App', () => {
     cy.visit('http://localhost:5173/books');
     cy.url().should('eq', 'http://localhost:5173/');
   });
+
+  it('should allow saving a comment for a favorite', () => {
+    const commentText = 'My top pick this month';
+
+    cy.contains('Login').click();
+    cy.get('input[name="username"]').type(user.username);
+    cy.get('input[name="password"]').type(user.password);
+    cy.get('button#login').click();
+
+    cy.contains('Books').click();
+    cy.get('button').contains('Add to Favorites').first().click();
+
+    cy.get('a#favorites-link').click();
+    cy.get('h2').contains('My Favorite Books').should('exist');
+
+    cy.get('input[id^="favorite-comment-"]').first().clear().type(commentText);
+    cy.contains('button', 'Save Comment').first().click();
+
+    cy.reload();
+    cy.get('input[id^="favorite-comment-"]').first().should('have.value', commentText);
+  });
 });

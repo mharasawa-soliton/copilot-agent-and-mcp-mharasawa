@@ -48,6 +48,9 @@ describe('Favorites API', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+    if (res.body.length > 0) {
+      expect(typeof res.body[0].comment).toBe('string');
+    }
   });
 
   it('GET /api/favorites should 404 for non-existent user', async () => {
@@ -159,5 +162,90 @@ describe('Favorites API', () => {
   it('DELETE /api/favorites/:bookId should fail without auth', async () => {
     const res = await request(app).delete('/api/favorites/1');
     expect(res.statusCode).toBe(401);
+  });
+
+  it('PATCH /api/favorites/:bookId/comment should update comment for a favorite', async () => {
+    const token = getToken('sandra');
+    const users = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    const sandra = users.find(u => u.username === 'sandra');
+    const existingFavorite = sandra.favorites[0];
+    if (!existingFavorite) return;
+
+    const comment = 'Great re-read!';
+    const patchRes = await request(app)
+      .patch(`/api/favorites/${existingFavorite}/comment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ comment });
+
+    expect(patchRes.statusCode).toBe(200);
+    expect(patchRes.body.message).toMatch(/updated/);
+
+    const getRes = await request(app)
+      .get('/api/favorites')
+      .set('Authorization', `Bearer ${token}`);
+    expect(getRes.statusCode).toBe(200);
+
+    const updatedBook = getRes.body.find(book => book.id === existingFavorite);
+    expect(updatedBook).toBeDefined();
+    expect(updatedBook.comment).toBe(comment);
+  });
+
+  it('PATCH /api/favorites/:bookId/comment should fail if comment is not string', async () => {
+    const token = getToken('sandra');
+    const users = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    const sandra = users.find(u => u.username === 'sandra');
+    const existingFavorite = sandra.favorites[0];
+    if (!existingFavorite) return;
+
+    const res = await request(app)
+      .patch(`/api/favorites/${existingFavorite}/comment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ comment: 123 });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('PATCH /api/favorites/:bookId/comment should fail for non-favorite book', async () => {
+    const token = getToken('sandra');
+    const books = JSON.parse(fs.readFileSync(booksFile, 'utf-8'));
+    const users = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    const sandra = users.find(u => u.username === 'sandra');
+    const notFav = books.find(b => !sandra.favorites.includes(b.id));
+    if (!notFav) return;
+
+    const res = await request(app)
+      .patch(`/api/favorites/${notFav.id}/comment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ comment: 'hello' });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('PATCH /api/favorites/:bookId/comment should fail without auth', async () => {
+    const res = await request(app)
+      .patch('/api/favorites/1/comment')
+      .send({ comment: 'hello' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('DELETE /api/favorites/:bookId should remove saved comment together with favorite', async () => {
+    const token = getToken('sandra');
+    const users = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    const sandra = users.find(u => u.username === 'sandra');
+    const existingFavorite = sandra.favorites[0];
+    if (!existingFavorite) return;
+
+    await request(app)
+      .patch(`/api/favorites/${existingFavorite}/comment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ comment: 'to be deleted' });
+
+    await request(app)
+      .delete(`/api/favorites/${existingFavorite}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    const usersAfter = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    const sandraAfter = usersAfter.find(u => u.username === 'sandra');
+    expect(sandraAfter.favoriteComments?.[existingFavorite]).toBeUndefined();
   });
 });
