@@ -1,10 +1,11 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchBooks } from '../store/booksSlice';
 import { addFavorite, fetchFavorites } from '../store/favoritesSlice';
 import { useNavigate } from 'react-router-dom';
 import styles from '../styles/BookList.module.css';
+import BookDetails from './BookDetails';
 
 const BookList = () => {
   const dispatch = useAppDispatch();
@@ -13,6 +14,7 @@ const BookList = () => {
   const token = useAppSelector(state => state.user.token);
   const navigate = useNavigate();
   const favorites = useAppSelector(state => state.favorites.items);
+  const [selectedBook, setSelectedBook] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -65,7 +67,7 @@ const BookList = () => {
                     </svg>
                   </span>
                 )}
-                <div className={styles.bookTitle}>{book.title}</div>
+                <div className={styles.bookTitle} onClick={() => setSelectedBook(book)} style={{ cursor: 'pointer' }}>{book.title}</div>
                 <div className={styles.bookAuthor}>by {book.author}</div>
                 <button
                   className={styles.simpleBtn}
@@ -78,6 +80,7 @@ const BookList = () => {
           })}
         </div>
       )}
+      {selectedBook && <BookDetails book={selectedBook} onClose={() => setSelectedBook(null)} />}
     </div>
   );
 };
