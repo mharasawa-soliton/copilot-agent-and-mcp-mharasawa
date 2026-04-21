@@ -34,6 +34,16 @@ describe('Book Favorites App', () => {
     cy.get('button').contains('Add to Favorites').first().click();
     cy.get('a#favorites-link').click();
     cy.get('h2').contains('My Favorite Books').should('exist');
+    cy.get('ul li').its('length').then((beforeCount) => {
+      cy.contains('button', 'Remove').first().click();
+      cy.reload();
+      cy.get('h2').contains('My Favorite Books').should('exist');
+      if (beforeCount > 1) {
+        cy.get('ul li').should('have.length', beforeCount - 1);
+      } else {
+        cy.contains('No favorite books yet.').should('exist');
+      }
+    });
   });
 
   it('should logout and protect routes', () => {
