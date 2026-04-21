@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchFavorites, removeFavorite } from '../store/favoritesSlice';
+import { fetchFavorites, removeFavorite, updateFavoriteComment } from '../store/favoritesSlice';
 import { useNavigate } from 'react-router-dom';
 
 const Favorites = () => {
@@ -9,6 +9,7 @@ const Favorites = () => {
   const status = useAppSelector(state => state.favorites.status);
   const token = useAppSelector(state => state.user.token);
   const navigate = useNavigate();
+  const [commentDrafts, setCommentDrafts] = useState({});
 
   useEffect(() => {
     if (!token) {
@@ -18,12 +19,32 @@ const Favorites = () => {
     dispatch(fetchFavorites(token));
   }, [dispatch, token, navigate]);
 
+  useEffect(() => {
+    setCommentDrafts(prev => {
+      const nextDrafts = {};
+      favorites.forEach(book => {
+        nextDrafts[book.id] = prev[book.id] ?? book.comment ?? '';
+      });
+      return nextDrafts;
+    });
+  }, [favorites]);
+
   const handleRemoveFavorite = async (bookId) => {
     if (!token) {
       navigate('/');
       return;
     }
     await dispatch(removeFavorite({ token, bookId }));
+    dispatch(fetchFavorites(token));
+  };
+
+  const handleSaveComment = async (bookId) => {
+    if (!token) {
+      navigate('/');
+      return;
+    }
+    const comment = commentDrafts[bookId] ?? '';
+    await dispatch(updateFavoriteComment({ token, bookId, comment }));
     dispatch(fetchFavorites(token));
   };
 
@@ -58,6 +79,23 @@ const Favorites = () => {
               <button onClick={() => handleRemoveFavorite(book.id)}>
                 Remove
               </button>
+              <div style={{ marginTop: '0.5rem' }}>
+                <label htmlFor={`favorite-comment-${book.id}`}>Comment:</label>
+                <div>
+                  <input
+                    id={`favorite-comment-${book.id}`}
+                    type="text"
+                    value={commentDrafts[book.id] ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCommentDrafts(prev => ({ ...prev, [book.id]: value }));
+                    }}
+                    placeholder="Add your comment"
+                    style={{ marginRight: '0.5rem', minWidth: '260px' }}
+                  />
+                  <button onClick={() => handleSaveComment(book.id)}>Save Comment</button>
+                </div>
+              </div>
             </li>
           ))}
         </ul>
